@@ -1,0 +1,14 @@
+{
+  "name": "node-sudoku-solver",
+  "version": "0.0.1",
+  "description": "Dustin goofing off with sudoku puzzles",
+  "dependencies" : {
+    "async"      :  "0.2.x",
+    "murmurhash" :  "0.0.2",
+    "underscore" :  "1.5.x",
+    "sugar"      :  "1.4.x"
+  },
+  "engines": {
+    "node": "0.10.x"
+  }
+}
