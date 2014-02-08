@@ -23,7 +23,35 @@ var cells = permute(rows, cols);
 var board = Object.extended({});
 cells.each(function(cell) {
 	board[cell] = digits;
-})
+});
+
+var columnBlocks = [];
+rows.each(function(row) { 
+	columnBlocks.push(permute([row], cols));
+});	
+
+var rowBlocks = [];
+cols.each(function(col) {
+	rowBlocks.push(permute(rows, [col]));
+});
+
+var squareBlocks = [];
+cols.inGroupsOf(3).each(function(colBlock) {
+	rows.inGroupsOf(3).each(function(rowBlock) {
+		squareBlocks.push(permute(rowBlock, colBlock));
+	});
+});
+
+// Now let's create a map of cell -> peers for elimination purposes
+var peers = Object.extended({});
+cells.each(function(cell) {
+	var has = function(n) { return n.indexOf(cell) !== -1 };
+
+	peers[cell] = [columnBlocks.findAll(has), 
+		rowBlocks.findAll(has), 
+		squareBlocks.findAll(has)
+	].flatten().exclude(cell);
+});
 
 function getColumnWidth(b) {
 	return 1 + b.values().map('length').max();
@@ -66,25 +94,30 @@ function display(b) {
 	console.log(displayed);
 }
 
-display(board);
-/*
-	var width = getColumnWidth(board);
-    var line = _.times('+'.join(['-'*(width*3)]*3)
-    for r in rows:
-        print ''.join(values[r+c].center(width)+('|' if c in '36' else '')
-                      for c in cols)
-        if r in 'CF': print line
-    print
+function set(b, cellKey, value) {
+	var cell = board[cellKey];
+	var remaining = .exclude(value);
+	console.log(cellKey, value, cell);
+
 }
 
-exports.display(board);
+function populate(b, input) {
+	cells.zip(input.split('')).each(function(known) {
+		var cell = known[0], value = known[1];
+		if ( value !== '.' ) {
+			set(b, cell, value);	
+		}
+	});
+	return b;
+}
 
-console.log(board);
-/**/
+display(board);
 
 // Test simple visualization
-var input = fs.readFileSync('./puzzles/single.txt')
-console.log("input: " + input);
+var input = fs.readFileSync('./puzzles/single.txt', 'utf8');
+console.log("Input: " + input);
+
+display(populate(board, input));
 
 
 
