@@ -19,12 +19,6 @@ var rows = String.range('A', 'I').every();
 var cols = String.range('1', '9').every();
 var cells = permute(rows, cols);
 
-// Let's create a virtual board with all cells open and available
-var board = Object.extended({});
-cells.each(function(cell) {
-	board[cell] = digits;
-});
-
 var columnBlocks = [];
 rows.each(function(row) { 
 	columnBlocks.push(permute([row], cols));
@@ -42,15 +36,22 @@ cols.inGroupsOf(3).each(function(colBlock) {
 	});
 });
 
+// Track the map of cell -> list(block) for inspecting group conditions
+var groups = Object.extended({});
+
 // Now let's create a map of cell -> peers for elimination purposes
 var peers = Object.extended({});
+
+
 cells.each(function(cell) {
 	var has = function(n) { return n.indexOf(cell) !== -1 };
 
-	peers[cell] = [columnBlocks.findAll(has), 
-		rowBlocks.findAll(has), 
-		squareBlocks.findAll(has)
-	].flatten().exclude(cell);
+	groups[cell] = [columnBlocks.findAll(has).flatten(), 
+		rowBlocks.findAll(has).flatten(), 
+		squareBlocks.findAll(has).flatten()
+	];
+
+	peers[cell] = groups[cell].flatten().exclude(cell);
 });
 
 function getColumnWidth(b) {
@@ -94,30 +95,135 @@ function display(b) {
 	console.log(displayed);
 }
 
-function set(b, cellKey, value) {
-	var cell = board[cellKey];
-	var remaining = .exclude(value);
-	console.log(cellKey, value, cell);
+function eliminate(b, cellKey, value) {
+	// If it's not there, we've already eliminated it.
+	if ( b[cellKey].indexOf(value) === -1 ) return true;
 
+	var val = b[cellKey] = b[cellKey].exclude(value);
+
+	// If length == 0, then this puzzle is invalid.
+	if ( val.length === 0 ) return false;
+
+	// If length == 1, then this is the last value,
+	// so we remove it from all the peers of this cell
+	var response = [];
+
+	if ( val.length === 1 ) {
+		peers[cellKey].each(function(it) {
+			response.push(eliminate(b, it, val[0]));
+		});
+	}
+
+	if ( !response.all(function(it) {return it !== false}) )
+		return false;
+
+	for ( group in groups[cellKey] ) {
+		var places = groups[cellKey][group].filter(function(it){ return b[it].indexOf(value) !== -1});
+		if ( places.length == 0 )
+			return false;
+		else if ( places.length === 1 )
+			if ( !set(b, places[0], value) )
+				return false;
+	}
+
+	return true;
 }
 
-function populate(b, input) {
+function set(b, cellKey, value) {
+	var others = b[cellKey].exclude(value);
+	var results = []
+
+	others.each(function(it) {
+		results.push(eliminate(b, cellKey, it));
+	});
+
+	return results.all(function(it) {return it !== false});
+}
+
+function createBoard() {
+	var board = Object.extended({});
+	cells.each(function(cell) {
+		board[cell] = digits;
+	});
+	return board;
+}
+
+function populate(input) {
+	var board = createBoard();
+
 	cells.zip(input.split('')).each(function(known) {
 		var cell = known[0], value = known[1];
 		if ( value !== '.' ) {
-			set(b, cell, value);	
+			set(board, cell, parseInt(value));	
 		}
 	});
-	return b;
+
+	return board;
 }
 
-display(board);
+var copyCount = 0;
+function copy(obj) {
+	// copyCount++;
+	// if ( copyCount % 100 == 0 ) {
+	// 	console.log(copyCount);
+	// }
 
-// Test simple visualization
-var input = fs.readFileSync('./puzzles/single.txt', 'utf8');
-console.log("Input: " + input);
+	return Object.extended(JSON.parse(JSON.stringify(obj)));
+}
 
-display(populate(board, input));
+function solve(board, i) {
+	// Check if puzzle is invalid
+	if ( !board )
+		return false;
 
+	// See if puzzle has invalid (empty) spots
+	if ( !board.all(function(it) {return board[it].length > 0}) )
+		return false;
 
+	// See if puzzle is solved?
+	if ( board.all(function(it) {return board[it].length == 1}) )
+		return board;
 
+	// Let's find any cell with the fewest options.
+	var cell = Object.extended(board.map(function(a, b) { return b.length == 1 ? 99 : b.length })).min();
+
+	var results = [];
+
+	// Try them all! :)
+	for ( var iCell = 0; iCell < board[cell].length; iCell++ )
+	{
+		var _board = copy(board);
+		if ( set(_board, cell, board[cell][iCell]) !== false ) {
+			var result = solve(_board, i+1);
+			if ( result )
+				return result;	
+		}
+	}
+
+	return false;
+}
+
+function run(line) {
+	console.log("Puzzle: " + line);	
+		
+	var board = populate(line);
+	console.log("After placement, before solving: ");
+	display(board);
+	
+	board = solve(board, 0);
+	console.log("Solved: ");
+	display(board);
+
+	console.log("");	
+}
+
+function runFile(name) {
+	console.log("Running File: " + name);
+	var input = fs.readFileSync('./puzzles/' + name + '.txt', 'utf8');
+	input.lines(function(line) {
+		run(line);
+	});
+}
+
+['easy', 'hard', 'hardest'].each(runFile);
+//run('48.3............71.2.......7.5....6....2..8.............1.76...3.....4......5....');
