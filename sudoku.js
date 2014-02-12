@@ -65,17 +65,6 @@ function getRowSeparator(b) {
 	return line;
 }
 
-function join(list, sep) {
-	var result = '';
-
-	list.each(function (item) {
-		if ( result != '' ) result += sep;
-		result += item;
-	});
-
-	return result;
-}
-
 function display(b) {
 	var width = getColumnWidth(b);
 	var rowSeparator = getRowSeparator(b) + "\n";
@@ -83,7 +72,7 @@ function display(b) {
 
 	rows.each(function (row) {
 		cols.each( function(col) {
-			displayed += join(b[row + col], "").pad(width);
+			displayed += b[row + col].join("").pad(width);
 
 			if ( col.has(/[36]/) ) displayed += '|';
 		});
@@ -161,13 +150,9 @@ function populate(input) {
 	return board;
 }
 
-var copyCount = 0;
-function copy(obj) {
-	// copyCount++;
-	// if ( copyCount % 100 == 0 ) {
-	// 	console.log(copyCount);
-	// }
 
+function copy(obj) {
+	// Surprisingly, this is one of the fastest methods of deep-cloning an object.
 	return Object.extended(JSON.parse(JSON.stringify(obj)));
 }
 
@@ -226,4 +211,3 @@ function runFile(name) {
 }
 
 ['easy', 'hard', 'hardest'].each(runFile);
-//run('48.3............71.2.......7.5....6....2..8.............1.76...3.....4......5....');
